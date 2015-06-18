@@ -538,8 +538,7 @@ void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelB
     returnMap[label] = panelBuffers["type"].getTextureReference();
     
     ofDisableAlphaBlending();
-    
-    return returnMap;
+	
 }
 
 //--------------------------------------------------------------
