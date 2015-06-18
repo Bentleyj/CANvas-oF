@@ -22,7 +22,7 @@ class ofApp : public ofBaseApp{
 
     
         void updatePosts(rawPost newRawPost);
-        map<string, ofTexture> generatePostImages(rawPost rawPost);
+        void generatePostImages(rawPost rawPost, map<string, ofFbo> panelBuffers);
         vector<ofApp::rawPost> fetchRawPosts(std::string newURL);
         void drawSquareImage(float x, float y, ofImage img, int targetWidth);
         void drawZoomedImage(float x, float y, ofImage img, int targetWidth, int targetHeight);
@@ -58,9 +58,16 @@ class ofApp : public ofBaseApp{
     
         ofTexture dateTex;
     
+        map<string, ofFbo> panelBuffers1;
+        map<string, ofFbo> panelBuffers2;
+        map<string, ofTexture> returnMap;
+    
+        ofImage image, portrait, qrCode, logo;
+
+    
         ofVideoPlayer housekeepingVid, eventVid, informationVid;
         bool eVidIsPlaying, hVidIsPlaying, iVidIsPlaying;
-    
+
         int titleIndex;
         int textIndex;
         int portIndex;
