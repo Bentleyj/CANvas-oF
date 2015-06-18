@@ -259,7 +259,9 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+    #ifdef __APPLE__
     ofScale(0.5, 0.5);
+    #endif
     if(rawPosts.size() > 0) {
         ofBackground(0);
         
