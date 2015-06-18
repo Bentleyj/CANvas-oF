@@ -112,17 +112,191 @@ void ofApp::setup(){
     
     dateTex = renderDate();
     
-    //    housekeepingVid.loadMovie("movies/House-Video.mov");
-    //    eventVid.loadMovie("movies/Calendar-Video.mov");
-    //    informationVid.loadMovie("movies/Information-Video.mov");
+//    housekeepingVid.loadMovie("movies/House-Video.mov");
+//    eventVid.loadMovie("movies/Calendar-Video.mov");
+//    informationVid.loadMovie("movies/Information-Video.mov");
     
     eVidIsPlaying = false;
     hVidIsPlaying = false;
     iVidIsPlaying = false;
     
-    //    informationVid.stop();
-    //    eventVid.stop();
-    //    housekeepingVid.stop();
+//    informationVid.stop();
+//    eventVid.stop();
+//    housekeepingVid.stop();
+    
+    timer = ofGetElapsedTimeMillis();
+    ofLogToFile("logFile.txt", true);
+}
+
+//--------------------------------------------------------------
+void ofApp::update(){
+    if(!bSetup) {
+        if(bNeedsFetch) {
+            rawPosts = fetchRawPosts(url);
+            if(ofGetWeekday() != today) {
+                today = ofGetWeekday();
+                dateTex = renderDate();
+            }
+            bNeedsFetch = false;
+        }
+        if(rawPosts.size() > 0) {
+            clock.update(ofToInt(ofGetTimestampString("%S")), ofToInt(ofGetTimestampString("%M")), ofToInt(ofGetTimestampString("%H")));
+            titlePanel.update();
+            textPanel.update();
+            portPanel.update();
+            typePanel.update();
+            datePanel.update();
+            
+            if(ofGetElapsedTimeMillis() - timer > 1000 && nextPanelReady) {
+                timer = ofGetElapsedTimeMillis();
+                titlePanel.flip(0.0f);
+            }
+            if(titlePanel.needsUpdate()) {
+                titleIndex++;
+                titleIndex %= posts.size();
+                textPanel.flip(titlePanel.getLastSpeed());
+            }
+            if(textPanel.needsUpdate()) {
+                textIndex++;
+                textIndex %= posts.size();
+                portPanel.flip(textPanel.getLastSpeed());
+            }
+            if(portPanel.needsUpdate()) {
+                portIndex++;
+                portIndex %= posts.size();
+                clock.flip(ofColor(0, 0, 0), portPanel.getLastSpeed());
+            }
+            if(clock.needsUpdate()) {
+                typePanel.flip(clock.getLastSpeed());
+            }
+            if(typePanel.needsUpdate()) {
+                typeIndex++;
+                typeIndex %= posts.size();
+                datePanel.flip(typePanel.getLastSpeed());#include "ofApp.h"
+
+#define BUFFER 20.0f
+#define MARGIN 48.0f
+#define TEXTBUFFER 40
+#define LINESPACING 0.7f
+#define QRSIZE 120
+
+//--------------------------------------------------------------
+void ofApp::setup(){
+    ofSetWindowPosition(0, 0);
+    ofSetRectMode(OF_RECTMODE_CORNER);
+    ofBackground(0);
+    ofTrueTypeFont::setGlobalDpi(72);
+    
+    ofHideCursor();
+    
+    today = ofGetWeekday();
+    
+    bool parsingSuccessful = settings.open("settings.json");
+    if(parsingSuccessful) {
+        bInternal = settings["Internal"].asBool();
+        bExternal = settings["External"].asBool();
+        url = settings["URL"].asString();
+    } else {
+        ofLog() << "[" << ofGetTimestampString() << "]" << "Failed to Parse settings json, Setting Default values...";
+        bInternal = true;
+        bExternal = true;
+        url = "http://canvas.can-online.org.uk";
+    }
+    
+    if(bInternal && !bExternal) ofLog() << "[" << ofGetTimestampString() << "]" << "This is an internal screen and will only display internal posts";
+    if(bExternal && !bInternal) ofLog() << "[" << ofGetTimestampString() << "]" << "This is an external screen and will only display external posts";
+    if(bExternal && bInternal) ofLog() << "[" << ofGetTimestampString() << "]" << "This is both and internal and external screen and will display everything";
+    if(!bInternal && !bExternal) ofLog() << "[" << ofGetTimestampString() << "]" << "This is neither an internal nor an external screen and will display nothing";
+    
+    bSetup = false;
+    
+    rawIterator = 0;
+    
+    housekeepingImage.loadImage("House-Icon.jpg");
+    eventImage.loadImage("Event-Icon.jpg");
+    informationImage.loadImage("Information-Icon.jpg");
+    blankImage.loadImage("blank-canvas.jpg");
+    
+    panels["title"] = ofRectangle(0, 0, 1080, 1185);
+    panels["text"] = ofRectangle(442.75, 1209, 596.25, 669);
+    panels["portrait"] = ofRectangle(24, 1488, 389, 408);
+    panels["clock"] = ofRectangle(6, 1209, 222, 266.625);
+    panels["type"] = ofRectangle(241.75, 1209, 188.75, 151);
+    panels["date"] = ofRectangle(241.75, 1373.125, 188.75, 102.5);
+    
+    titlePanel.init(panels["title"], -100);
+    textPanel.init(panels["text"], -70);
+    portPanel.init(panels["portrait"], -66);
+    typePanel.init(panels["type"], -100);
+    datePanel.init(panels["date"], -70);
+    
+    titleIndex = 0;
+    textIndex = 0;
+    portIndex = 0;
+    typeIndex = 0;
+    dateIndex = 0;
+    
+    clock = Clock(panels["clock"]);
+    clock.setImgs("Clock.jpg","Hour-Hand.png","Minute-Hand.png","Half-Clock.png");
+    
+    font.setup("TradeGothicLTStd-Bold.ttf");
+    
+    todayText.init("TradeGothicLTStd-Bold.otf", 60);
+    
+    rawPosts = vector<ofApp::rawPost>();
+    
+    posts = deque< map<string, ofTexture> >();
+    
+    rawPosts = fetchRawPosts(url);
+    
+    panelBuffers1["title"] = ofFbo();
+    panelBuffers1["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["text"] = ofFbo();
+    panelBuffers1["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["portrait"] = ofFbo();
+    panelBuffers1["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["clock"] = ofFbo();
+    panelBuffers1["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    
+    panelBuffers2["title"] = ofFbo();
+    panelBuffers2["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["text"] = ofFbo();
+    panelBuffers2["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["portrait"] = ofFbo();
+    panelBuffers2["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["clock"] = ofFbo();
+    panelBuffers2["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    
+    image.allocate(panels["title"].getWidth(), panels["title"].getHeight(), OF_IMAGE_COLOR);
+    portrait.allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), OF_IMAGE_COLOR);
+    qrCode.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR); //don't allocate qr code or logo because we will need to resize them smaller
+    logo.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR);
+    
+    returnMap["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    returnMap["text"].allocate(panels["text"].getWidth(), panels["text"].getHeight(), GL_RGBA);
+    returnMap["portrait"].allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), GL_RGBA);
+    returnMap["type"].allocate(panels["type"].getWidth(), panels["type"].getHeight(), GL_RGBA);
+    
+    if(rawPosts.size() > 0) {
+        updatePosts(rawPosts[rawIterator]);
+        rawIterator++;
+        rawIterator%=rawPosts.size();
+        updatePosts(rawPosts[rawIterator]);
+    }
+    
+    dateTex = renderDate();
+    
+//    housekeepingVid.loadMovie("movies/House-Video.mov");
+//    eventVid.loadMovie("movies/Calendar-Video.mov");
+//    informationVid.loadMovie("movies/Information-Video.mov");
+//    
+//    eVidIsPlaying = false;
+//    hVidIsPlaying = false;
+//    iVidIsPlaying = false;
+//    
+//    informationVid.stop();
+//    eventVid.stop();
+//    housekeepingVid.stop();
     
     timer = ofGetElapsedTimeMillis();
     ofLogToFile("logFile.txt", true);
@@ -177,73 +351,70 @@ void ofApp::update(){
             if(datePanel.needsUpdate()) {
                 dateIndex++;
                 dateIndex %= posts.size();
-                nextPanelReady = false;
-                bNeedsFetch = true;
                 updatePosts(rawPosts[rawIterator]);
-                //                if(rawPosts[rawIterator].type == "Housekeeping") {
-                //                    //housekeepingVid.play();
-                //                    //hVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(rawPosts[rawIterator].type == "Event"){
-                //                    //eventVid.play();
-                //                    //eVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(rawPosts[rawIterator].type == "Information") {
-                //                    //informationVid.play();
-                //                    //iVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(!iVidIsPlaying && !eVidIsPlaying && !hVidIsPlaying) {
-                //                    updatePosts(rawPosts[rawIterator]);
-                //                }
+//                if(rawPosts[rawIterator].type == "Housekeeping") {
+//                    housekeepingVid.play();
+//                    hVidIsPlaying = true;
+//                }
+//                if(rawPosts[rawIterator].type == "Event"){
+//                    eventVid.play();
+//                    eVidIsPlaying = true;
+//                }
+//                if(rawPosts[rawIterator].type == "Information") {
+//                    informationVid.play();
+//                    iVidIsPlaying = true;
+//                }
+//                if(!iVidIsPlaying && !eVidIsPlaying && !hVidIsPlaying) {
+//                    updatePosts(rawPosts[rawIterator]);
+//                }
                 rawIterator++;
                 rawIterator%=rawPosts.size();
+                nextPanelReady = false;
+                bNeedsFetch = true;
             }
-            //            if(iVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating infoVid";
-            //                informationVid.update();
-            //                if(informationVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "infovid is done!";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting infovid to first frame";
-            //                    informationVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping infovid";
-            //                    informationVid.stop();
-            //                    iVidIsPlaying = false;
-            //
-            //                }
-            //            }
-            //            if(eVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating event vid";
-            //                eventVid.update();
-            //                if(eventVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "event vid is done!";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting event vid to first frame";
-            //                    eventVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping event vid";
-            //                    eventVid.stop();
-            //                    eVidIsPlaying = false;
-            //                }
-            //            }
-            //            if(hVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating housekeeping vid";
-            //                housekeepingVid.update();
-            //                if(housekeepingVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "housekeeping vid is done";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting housekeeping vid to first frame";
-            //                    housekeepingVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping housekeeping vid";
-            //                    housekeepingVid.stop();
-            //                    hVidIsPlaying = false;
-            //                }
-            //            }
+//            if(iVidIsPlaying) {
+//                ofLog() << "[" << ofGetTimestampString() << "]" << "updating infoVid";
+//                informationVid.update();
+//                if(informationVid.getCurrentFrame() > 299) {
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "infovid is done!";
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
+//                    updatePosts(rawPosts[rawIterator]);
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting infovid to first frame";
+//                    informationVid.firstFrame();
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping infovid";
+//                    informationVid.stop();
+//                    iVidIsPlaying = false;
+//                    
+//                }
+//            }
+//            if(eVidIsPlaying) {
+//                ofLog() << "[" << ofGetTimestampString() << "]" << "updating event vid";
+//                eventVid.update();
+//                if(eventVid.getCurrentFrame() > 299) {
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "event vid is done!";
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
+//                    updatePosts(rawPosts[rawIterator]);
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting event vid to first frame";
+//                    eventVid.firstFrame();
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping event vid";
+//                    eventVid.stop();
+//                    eVidIsPlaying = false;
+//                }
+//            }
+//            if(hVidIsPlaying) {
+//                ofLog() << "[" << ofGetTimestampString() << "]" << "updating housekeeping vid";
+//                housekeepingVid.update();
+//                if(housekeepingVid.getCurrentFrame() > 299) {
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "housekeeping vid is done";
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
+//                    updatePosts(rawPosts[rawIterator]);
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting housekeeping vid to first frame";
+//                    housekeepingVid.firstFrame();
+//                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping housekeeping vid";
+//                    housekeepingVid.stop();
+//                    hVidIsPlaying = false;
+//                }
+//            }
         } else {
             ofLog() << "[" << ofGetTimestampString() << "]" << "rawPosts.size() is < 0";
             ofLog() << "[" << ofGetTimestampString() << "]" << "trying to fetch raw posts";
@@ -263,9 +434,9 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-#ifdef __APPLE
+    //#ifdef __APPLE__
     ofScale(0.5, 0.5);
-#endif
+    //#endif
     if(rawPosts.size() > 0) {
         ofBackground(0);
         
@@ -304,26 +475,24 @@ void ofApp::draw(){
         datePanel.display();
         ofDisableDepthTest();
         
-        //        ofPushStyle();
-        //        if(iVidIsPlaying) {
-        //            ofSetColor(255);
-        //            informationVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
-        //            ofSetColor(0);
-        //            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
-        //        }
-        //        if(eVidIsPlaying) {
-        //            ofSetColor(255);
-        //            eventVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
-        //            ofSetColor(0);
-        //            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
-        //        }
-        //        if(hVidIsPlaying) {
-        //            ofSetColor(255);
-        //            housekeepingVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
-        //            ofSetColor(0);
-        //            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
-        //        }
-        //        ofPopStyle();
+        ofPushStyle();
+//        if(informationVid.isPlaying()) {
+//            ofSetColor(255);
+//            informationVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
+//            ofSetColor(0);
+//            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
+//        } else if(eventVid.isPlaying()) {
+//            ofSetColor(255);
+//            eventVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
+//            ofSetColor(0);
+//            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
+//        } else if(housekeepingVid.isPlaying()) {
+//            ofSetColor(255);
+//            housekeepingVid.draw(panels["type"].getX(), panels["type"].getY(), panels["type"].getWidth(), panels["type"].getHeight());
+//            ofSetColor(0);
+//            ofRect(panels["type"].getX() - 1, panels["type"].getY() + panels["type"].getHeight() - 1, panels["type"].getWidth() + 2, 3);
+//        }
+        ofPopStyle();
     } else {
         ofPushStyle();
         ofSetColor(255);
@@ -544,9 +713,6 @@ void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelB
     if(rawPost.type == "Information") informationImage.draw(0, 0, panels[label].getWidth(), panels[label].getHeight());
     panelBuffers["type"].end();
     returnMap[label] = panelBuffers["type"].getTextureReference();
-    
-    ofDisableAlphaBlending();
-ofLog() << "[" << ofGetTimestampString() << "]" <<"finsihed generating post images" << endl;
 }
 
 //--------------------------------------------------------------

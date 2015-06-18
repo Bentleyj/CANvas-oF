@@ -8,78 +8,78 @@
 #include "Panel.h"
 
 class ofApp : public ofBaseApp{
-
-	public:
     
-        struct rawPost {
-            std::string title, text, email, type, imageLink, portraitLink, logoLink, qrLink, venue, date, shortCode;
-        };
-
-		void setup();
-		void update();
-		void draw();
-        void keyPressed(int key);
-
+public:
     
-        void updatePosts(rawPost newRawPost);
-        void generatePostImages(rawPost rawPost, map<string, ofFbo> panelBuffers);
-        vector<ofApp::rawPost> fetchRawPosts(std::string newURL);
-        void drawSquareImage(float x, float y, ofImage img, int targetWidth);
-        void drawZoomedImage(float x, float y, ofImage img, int targetWidth, int targetHeight);
+    struct rawPost {
+        std::string title, text, email, type, imageLink, portraitLink, logoLink, qrLink, venue, date, shortCode;
+    };
     
-        std::string intToMonth(int num);
-        std::string appendOrdinal(int num);
+    void setup();
+    void update();
+    void draw();
+    void keyPressed(int key);
     
-        ofTexture renderDate();
+    
+    void updatePosts(rawPost newRawPost);
+    void generatePostImages(rawPost rawPost, map<string, ofFbo> panelBuffers);
+    vector<ofApp::rawPost> fetchRawPosts(std::string newURL);
+    void drawSquareImage(float x, float y, ofImage img, int targetWidth);
+    void drawZoomedImage(float x, float y, ofImage img, int targetWidth, int targetHeight);
+    
+    std::string intToMonth(int num);
+    std::string appendOrdinal(int num);
+    
+    ofTexture renderDate();
     
     /*variables from canvas*/
-        ofxJSONElement json;
-        ofxJSONElement settings;
-        std::string url;
-        
-        vector<rawPost> rawPosts;
-        deque< map<string, ofTexture> > posts;
+    ofxJSONElement json;
+    ofxJSONElement settings;
+    std::string url;
     
-        int timer;
-        int rawIterator;
-        int today;
+    vector<rawPost> rawPosts;
+    deque< map<string, ofTexture> > posts;
     
-        bool bNeedsFetch;
-        bool nextPanelReady;
-        bool bInternal, bExternal;
-        bool bSetup;
+    int timer;
+    int rawIterator;
+    int today;
     
-        ofxTextBlock todayText;
-        ofxFontStash font;
+    bool bNeedsFetch;
+    bool nextPanelReady;
+    bool bInternal, bExternal;
+    bool bSetup;
     
-        map<string, ofRectangle> panels;
+    ofxTextBlock todayText;
+    ofxFontStash font;
     
-        ofImage eventImage, housekeepingImage, informationImage, blankImage;
+    map<string, ofRectangle> panels;
     
-        ofTexture dateTex;
+    ofImage eventImage, housekeepingImage, informationImage, blankImage;
     
-        map<string, ofFbo> panelBuffers1;
-        map<string, ofFbo> panelBuffers2;
-        map<string, ofTexture> returnMap;
+    ofTexture dateTex;
     
-        ofImage image, portrait, qrCode, logo;
-
+    map<string, ofFbo> panelBuffers1;
+    map<string, ofFbo> panelBuffers2;
+    map<string, ofTexture> returnMap;
     
-        ofVideoPlayer housekeepingVid, eventVid, informationVid;
-        bool eVidIsPlaying, hVidIsPlaying, iVidIsPlaying;
-
-        int titleIndex;
-        int textIndex;
-        int portIndex;
-        int typeIndex;
-        int dateIndex;
-                
-        Panel titlePanel;
-        Panel textPanel;
-        Panel portPanel;
-        Panel typePanel;
-        Panel datePanel;
-        
-        Clock clock;
+    ofImage image, portrait, qrCode, logo;
+    
+    
+    ofVideoPlayer housekeepingVid, eventVid, informationVid;
+    bool eVidIsPlaying, hVidIsPlaying, iVidIsPlaying;
+    
+    int titleIndex;
+    int textIndex;
+    int portIndex;
+    int typeIndex;
+    int dateIndex;
+    
+    Panel titlePanel;
+    Panel textPanel;
+    Panel portPanel;
+    Panel typePanel;
+    Panel datePanel;
+    
+    Clock clock;
 };
 
