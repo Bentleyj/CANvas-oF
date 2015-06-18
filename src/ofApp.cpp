@@ -75,6 +75,34 @@ void ofApp::setup(){
     
     rawPosts = fetchRawPosts(url);
     
+    panelBuffers1["title"] = ofFbo();
+    panelBuffers1["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["text"] = ofFbo();
+    panelBuffers1["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["portrait"] = ofFbo();
+    panelBuffers1["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers1["clock"] = ofFbo();
+    panelBuffers1["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    
+    panelBuffers2["title"] = ofFbo();
+    panelBuffers2["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["text"] = ofFbo();
+    panelBuffers2["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["portrait"] = ofFbo();
+    panelBuffers2["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    panelBuffers2["clock"] = ofFbo();
+    panelBuffers2["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    
+    image.allocate(panels["title"].getWidth(), panels["title"].getHeight(), OF_IMAGE_COLOR);
+    portrait.allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), OF_IMAGE_COLOR);
+    qrCode.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR); //don't allocate qr code or logo because we will need to resize them smaller
+    logo.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR);
+    
+    returnMap["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    returnMap["text"].allocate(panels["text"].getWidth(), panels["text"].getHeight(), GL_RGBA);
+    returnMap["portrait"].allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), GL_RGBA);
+    returnMap["type"].allocate(panels["type"].getWidth(), panels["type"].getHeight(), GL_RGBA);
+    
     if(rawPosts.size() > 0) {
         updatePosts(rawPosts[rawIterator]);
         rawIterator++;
@@ -231,7 +259,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    //ofScale(0.5, 0.5);
+    ofScale(0.5, 0.5);
     if(rawPosts.size() > 0) {
         ofBackground(0);
         
@@ -323,7 +351,7 @@ void ofApp::draw(){
 }
 
 //--------------------------------------------------------------
-map<string, ofTexture> ofApp::generatePostImages(ofApp::rawPost rawPost) {
+void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelBuffers) {
     
     ofEnableAlphaBlending();
     
@@ -331,39 +359,6 @@ map<string, ofTexture> ofApp::generatePostImages(ofApp::rawPost rawPost) {
     std::string label;
     ofLog() << "[" << ofGetTimestampString() << "]" << "Generating Images For Post "<<shortCode<<" Synchronously.";
     
-    //<------------------------------ALLOCATE BUFFERS---------------------------->
-    
-    map<string, ofFbo> panelBuffers;
-    
-    panelBuffers["title"] = ofFbo();
-    panelBuffers["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers["text"] = ofFbo();
-    panelBuffers["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers["portrait"] = ofFbo();
-    panelBuffers["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers["clock"] = ofFbo();
-    panelBuffers["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    
-    //<------------------------------ALLOCATE TEXTURES---------------------------->
-    
-    map<string, ofTexture> returnMap;
-    
-    returnMap["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    returnMap["text"].allocate(panels["text"].getWidth(), panels["text"].getHeight(), GL_RGBA);
-    returnMap["portrait"].allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), GL_RGBA);
-    returnMap["type"].allocate(panels["type"].getWidth(), panels["type"].getHeight(), GL_RGBA);
-    
-    //<------------------------------ALLOCATE IMAGES---------------------------->
-    
-    ofImage image;
-    ofImage portrait;
-    ofImage qrCode;
-    ofImage logo;
-    
-    image.allocate(panels["title"].getWidth(), panels["title"].getHeight(), OF_IMAGE_COLOR);
-    portrait.allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), OF_IMAGE_COLOR);
-    qrCode.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR); //don't allocate qr code or logo because we will need to resize them smaller
-    logo.allocate(QRSIZE, QRSIZE, OF_IMAGE_COLOR);
     
     //<------------------------------LOAD IMAGES---------------------------->
     
@@ -372,17 +367,14 @@ map<string, ofTexture> ofApp::generatePostImages(ofApp::rawPost rawPost) {
     qrCode.loadImage(rawPost.qrLink);
     logo.loadImage(rawPost.logoLink);
     
-    ofFbo buffer;
-    buffer = ofFbo();
-    
     //<------------------------------DRAW MAIN PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Main Panel";
     
     label = "title";
     ofLog() << "[" << ofGetTimestampString() << "]" << "allocating buffer";
-    buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
+    //buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
     ofLog() << "[" << ofGetTimestampString() << "]" << "starting buffer";
-    buffer.begin();
+    panelBuffers["title"].begin();
     ofLog() << "[" << ofGetTimestampString() << "]" << "clearing";
     ofClear(255, 255, 255, 0);
     ofSetColor(255);
@@ -423,16 +415,16 @@ map<string, ofTexture> ofApp::generatePostImages(ofApp::rawPost rawPost) {
                                  );
     }
     ofLog() << "[" << ofGetTimestampString() << "]" << "closing buffer";
-    buffer.end();
+    panelBuffers["title"].end();
     ofLog() << "[" << ofGetTimestampString() << "]" << "setting returnMap to the texture reference";
-    returnMap[label] = buffer.getTextureReference();
+    returnMap[label] = panelBuffers["title"].getTextureReference(0);
     
     //<------------------------------DRAW TEXT PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Text Panel";
     
     label = "text";
-    buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
-    buffer.begin();
+    //buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
+    panelBuffers["text"].begin();
     ofClear(255, 255, 255, 0);
     ofSetColor(0);
     ofRect(0, 0, panels[label].getWidth(), panels[label].getHeight());
@@ -514,36 +506,36 @@ map<string, ofTexture> ofApp::generatePostImages(ofApp::rawPost rawPost) {
     qrCode.draw(panels[label].getWidth() - QRSIZE - BUFFER, panels[label].getHeight() - QRSIZE, QRSIZE, QRSIZE);
     drawSquareImage(panels[label].getWidth() - QRSIZE - QRSIZE - 2*BUFFER,  panels[label].getHeight() - QRSIZE, logo, QRSIZE);
     
-    buffer.end();
-    returnMap[label] = buffer.getTextureReference();
+    panelBuffers["text"].end();
+    returnMap[label] = panelBuffers["text"].getTextureReference();
     
     //<------------------------------DRAW PORTRAIT PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Portrait Panel";
     
     label = "portrait";
-    buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
-    buffer.begin();
+    //buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
+    panelBuffers["portrait"].begin();
     ofClear(255, 255, 255, 0);
     ofSetColor(255);
     //    portrait.draw(0, 0, panels[label].getWidth(), panels[label].getHeight());
     drawZoomedImage(0,  0, portrait, panels[label].getWidth(), panels[label].getHeight());
-    buffer.end();
-    returnMap[label] = buffer.getTextureReference();
+    panelBuffers["portrait"].end();
+    returnMap[label] = panelBuffers["portrait"].getTextureReference();
     
     
     //<------------------------------DRAW TYPE PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Type Panel";
     
     label = "type";
-    buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
-    buffer.begin();
+    //buffer.allocate(panels[label].getWidth(), panels[label].getHeight(), GL_RGBA);
+    panelBuffers["type"].begin();
     ofClear(255, 255, 255, 0);
     ofSetColor(255);
     if(rawPost.type == "Housekeeping") housekeepingImage.draw(0, 0, panels[label].getWidth(), panels[label].getHeight());
     if(rawPost.type == "Event") eventImage.draw(0, 0, panels[label].getWidth(), panels[label].getHeight());
     if(rawPost.type == "Information") informationImage.draw(0, 0, panels[label].getWidth(), panels[label].getHeight());
-    buffer.end();
-    returnMap[label] = buffer.getTextureReference();
+    panelBuffers["type"].end();
+    returnMap[label] = panelBuffers["type"].getTextureReference();
     
     ofDisableAlphaBlending();
     
@@ -555,7 +547,9 @@ void ofApp::updatePosts(ofApp::rawPost newRawPost) {
     ofDisableDepthTest();
     
     if(posts.size()>1) posts.pop_front();
-    posts.push_back(generatePostImages(newRawPost));
+    if(rawIterator%2 == 0) generatePostImages(newRawPost, panelBuffers1);
+    else generatePostImages(newRawPost, panelBuffers2);
+    posts.push_back(returnMap);
     nextPanelReady = true;
     
     titleIndex = 0;
@@ -790,6 +784,5 @@ void ofApp::keyPressed(int key){
         }
     }
 }
-
 
 
