@@ -20,7 +20,6 @@ public:
     void draw();
     void keyPressed(int key);
     
-    
     void updatePosts(rawPost newRawPost);
     void generatePostImages(rawPost rawPost, map<string, ofFbo> panelBuffers);
     vector<ofApp::rawPost> fetchRawPosts(std::string newURL);
@@ -43,11 +42,15 @@ public:
     int timer;
     int rawIterator;
     int today;
+    int minDuration;
     
     bool bNeedsFetch;
     bool nextPanelReady;
     bool bInternal, bExternal;
     bool bSetup;
+    bool postsNeedUpdate;
+    bool flipsCompleted;
+    bool useBuffer1;
     
     ofxTextBlock todayText;
     ofxFontStash font;
@@ -65,8 +68,8 @@ public:
     ofImage image, portrait, qrCode, logo;
     
     
-    ofVideoPlayer housekeepingVid, eventVid, informationVid;
-    bool eVidIsPlaying, hVidIsPlaying, iVidIsPlaying;
+    //    ofVideoPlayer housekeepingVid, eventVid, informationVid;
+    //    bool eVidIsPlaying, hVidIsPlaying, iVidIsPlaying;
     
     int titleIndex;
     int textIndex;

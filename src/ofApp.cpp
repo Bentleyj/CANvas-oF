@@ -22,11 +22,13 @@ void ofApp::setup(){
         bInternal = settings["Internal"].asBool();
         bExternal = settings["External"].asBool();
         url = settings["URL"].asString();
+        minDuration = settings["minDuration"].asInt();
     } else {
         ofLog() << "[" << ofGetTimestampString() << "]" << "Failed to Parse settings json, Setting Default values...";
         bInternal = true;
         bExternal = true;
         url = "http://canvas.can-online.org.uk";
+        minDuration = 30;
     }
     
     if(bInternal && !bExternal) ofLog() << "[" << ofGetTimestampString() << "]" << "This is an internal screen and will only display internal posts";
@@ -116,9 +118,12 @@ void ofApp::setup(){
     //    eventVid.loadMovie("movies/Calendar-Video.mov");
     //    informationVid.loadMovie("movies/Information-Video.mov");
     
-    eVidIsPlaying = false;
-    hVidIsPlaying = false;
-    iVidIsPlaying = false;
+    //    eVidIsPlaying = false;
+    //    hVidIsPlaying = false;
+    //    iVidIsPlaying = false;
+    postsNeedUpdate = false;
+    flipsCompleted = true;
+    useBuffer1 = true;
     
     //    informationVid.stop();
     //    eventVid.stop();
@@ -147,7 +152,15 @@ void ofApp::update(){
             typePanel.update();
             datePanel.update();
             
-            if(ofGetElapsedTimeMillis() - timer > 30000 && nextPanelReady) {
+            if(postsNeedUpdate) {
+                rawIterator++;
+                rawIterator%=rawPosts.size();
+                updatePosts(rawPosts[rawIterator]);
+                postsNeedUpdate = false;
+            }
+            
+            if(ofGetElapsedTimeMillis() - timer > minDuration*1000 && nextPanelReady && flipsCompleted) {
+                flipsCompleted = false;
                 timer = ofGetElapsedTimeMillis();
                 titlePanel.flip(0.0f);
             }
@@ -179,27 +192,28 @@ void ofApp::update(){
                 dateIndex %= posts.size();
                 nextPanelReady = false;
                 bNeedsFetch = true;
-                updatePosts(rawPosts[rawIterator]);
+                //                datePanel.setTexs(&dateTex, &dateTex);
+                //                datePanel.display();
+                postsNeedUpdate = true;
+                flipsCompleted = true;
                 //                if(rawPosts[rawIterator].type == "Housekeeping") {
                 //                    //housekeepingVid.play();
                 //                    //hVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
+                //                    //updatePosts(rawPosts[rawIterator]);
                 //                }
                 //                if(rawPosts[rawIterator].type == "Event"){
                 //                    //eventVid.play();
                 //                    //eVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
+                //                    //updatePosts(rawPosts[rawIterator]);
                 //                }
                 //                if(rawPosts[rawIterator].type == "Information") {
                 //                    //informationVid.play();
                 //                    //iVidIsPlaying = true;
-                //                    updatePosts(rawPosts[rawIterator]);
+                //                    //updatePosts(rawPosts[rawIterator]);
                 //                }
                 //                if(!iVidIsPlaying && !eVidIsPlaying && !hVidIsPlaying) {
-                //                    updatePosts(rawPosts[rawIterator]);
+                //                    //updatePosts(rawPosts[rawIterator]);
                 //                }
-                rawIterator++;
-                rawIterator%=rawPosts.size();
             }
             //            if(iVidIsPlaying) {
             //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating infoVid";
@@ -263,7 +277,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-#ifdef __APPLE
+#ifdef __APPLE__
     ofScale(0.5, 0.5);
 #endif
     if(rawPosts.size() > 0) {
@@ -354,6 +368,12 @@ void ofApp::draw(){
         ofDrawBitmapString("Currently connecting to this URL: " + url, leftMargin, textHeight);
         textHeight += lineSpacing;
         ofDrawBitmapString("Change this by editting the URL field of the settings.json file within the bin/data/ folder", leftMargin, textHeight);
+        textHeight += lineSpacing*2;
+        ofDrawBitmapString("The minimum time a post stays active is " + ofToString(minDuration) + " seconds", leftMargin, textHeight);
+        textHeight += lineSpacing;
+        ofDrawBitmapString("Press '+' to increase the minimum duration and '-' to decrease it", leftMargin, textHeight);
+        textHeight += lineSpacing;
+        ofDrawBitmapString("Please note the next post will only be displayed when it has loaded from the internet", leftMargin, textHeight);
         ofDisableAlphaBlending();
     }
 }
@@ -546,7 +566,6 @@ void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelB
     returnMap[label] = panelBuffers["type"].getTextureReference();
     
     ofDisableAlphaBlending();
-ofLog() << "[" << ofGetTimestampString() << "]" <<"finsihed generating post images" << endl;
 }
 
 //--------------------------------------------------------------
@@ -554,8 +573,9 @@ void ofApp::updatePosts(ofApp::rawPost newRawPost) {
     ofDisableDepthTest();
     
     if(posts.size()>1) posts.pop_front();
-    if(rawIterator%2 == 0) generatePostImages(newRawPost, panelBuffers1);
+    if(useBuffer1) generatePostImages(newRawPost, panelBuffers1);
     else generatePostImages(newRawPost, panelBuffers2);
+    useBuffer1 = !useBuffer1;
     posts.push_back(returnMap);
     nextPanelReady = true;
     
@@ -787,6 +807,18 @@ void ofApp::keyPressed(int key){
         if(key == 'e'){
             bExternal = !bExternal;
             settings["External"] = bExternal;
+            settings.save("settings.json", false);
+        }
+        if(key == '+') {
+            minDuration++;
+            minDuration = min(600, minDuration);
+            settings["minDuration"] = minDuration;
+            settings.save("settings.json", false);
+        }
+        if(key == '-') {
+            minDuration--;
+            minDuration = max(0, minDuration);
+            settings["minDuration"] = minDuration;
             settings.save("settings.json", false);
         }
     }
