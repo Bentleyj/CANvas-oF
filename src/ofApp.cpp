@@ -390,10 +390,15 @@ void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelB
     
     //<------------------------------LOAD IMAGES---------------------------->
     
-    image.loadImage(rawPost.imageLink);
-    portrait.loadImage(rawPost.portraitLink);
-    qrCode.loadImage(rawPost.qrLink);
-    logo.loadImage(rawPost.logoLink);
+    bool loaded = false;
+    while(!loaded) loaded = image.loadImage(rawPost.imageLink);
+    loaded = false;
+    while(!loaded) loaded = portrait.loadImage(rawPost.portraitLink);
+    loaded = false;
+    while(!loaded) loaded = qrCode.loadImage(rawPost.qrLink);
+    loaded = false;
+    while(!loaded) loaded = logo.loadImage(rawPost.logoLink);
+    loaded = false;
     
     //<------------------------------DRAW MAIN PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Main Panel";
