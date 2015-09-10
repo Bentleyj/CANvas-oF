@@ -41,6 +41,8 @@ public:
     
     int timer;
     int rawIterator;
+    int panelBufferIterator;
+    int numPanelBuffers;
     int today;
     int minDuration;
     
@@ -61,8 +63,8 @@ public:
     
     ofTexture dateTex;
     
-    map<string, ofFbo> panelBuffers1;
-    map<string, ofFbo> panelBuffers2;
+    map<string, ofFbo> panelBuffers[5];
+    //map<string, ofFbo> panelBuffers2;
     map<string, ofTexture> returnMap;
     
     ofImage image, portrait, qrCode, logo;

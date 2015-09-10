@@ -22,6 +22,7 @@ public:
     void display();
     void displayDebug();
     void flip(float newSpeed);
+    void setFlipping(bool newFlipping);
     float getRot();
     float getLastSpeed();
     

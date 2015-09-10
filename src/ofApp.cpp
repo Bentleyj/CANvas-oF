@@ -39,6 +39,8 @@ void ofApp::setup(){
     bSetup = false;
     
     rawIterator = 0;
+    panelBufferIterator = 0;
+    numPanelBuffers = 5;
     
     housekeepingImage.loadImage("House-Icon.jpg");
     eventImage.loadImage("Event-Icon.jpg");
@@ -77,23 +79,16 @@ void ofApp::setup(){
     
     rawPosts = fetchRawPosts(url);
     
-    panelBuffers1["title"] = ofFbo();
-    panelBuffers1["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers1["text"] = ofFbo();
-    panelBuffers1["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers1["portrait"] = ofFbo();
-    panelBuffers1["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers1["clock"] = ofFbo();
-    panelBuffers1["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    
-    panelBuffers2["title"] = ofFbo();
-    panelBuffers2["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers2["text"] = ofFbo();
-    panelBuffers2["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers2["portrait"] = ofFbo();
-    panelBuffers2["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
-    panelBuffers2["clock"] = ofFbo();
-    panelBuffers2["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    for(int i=0; i<numPanelBuffers; i++) {
+        panelBuffers[i]["title"] = ofFbo();
+        panelBuffers[i]["title"].allocate(panels["title"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+        panelBuffers[i]["text"] = ofFbo();
+        panelBuffers[i]["text"].allocate(panels["text"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+        panelBuffers[i]["portrait"] = ofFbo();
+        panelBuffers[i]["portrait"].allocate(panels["portrait"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+        panelBuffers[i]["clock"] = ofFbo();
+        panelBuffers[i]["type"].allocate(panels["type"].getWidth(), panels["title"].getHeight(), GL_RGBA);
+    }
     
     image.allocate(panels["title"].getWidth(), panels["title"].getHeight(), OF_IMAGE_COLOR);
     portrait.allocate(panels["portrait"].getWidth(), panels["portrait"].getHeight(), OF_IMAGE_COLOR);
@@ -144,121 +139,60 @@ void ofApp::update(){
             }
             bNeedsFetch = false;
         }
-        if(rawPosts.size() > 0) {
-            clock.update(ofToInt(ofGetTimestampString("%S")), ofToInt(ofGetTimestampString("%M")), ofToInt(ofGetTimestampString("%H")));
-            titlePanel.update();
-            textPanel.update();
-            portPanel.update();
-            typePanel.update();
-            datePanel.update();
+        
+        clock.update(ofToInt(ofGetTimestampString("%S")), ofToInt(ofGetTimestampString("%M")), ofToInt(ofGetTimestampString("%H")));
+        titlePanel.update();
+        textPanel.update();
+        portPanel.update();
+        typePanel.update();
+        datePanel.update();
+        
+        if(postsNeedUpdate && rawPosts.size() > 0) {
+            rawIterator++;
+            rawIterator%=rawPosts.size();
+            updatePosts(rawPosts[rawIterator]);
+            postsNeedUpdate = false;
+        }
+        
+        if(ofGetElapsedTimeMillis() - timer > minDuration*1000 && posts.size() > 1 && flipsCompleted) {
+            flipsCompleted = false;
+            timer = ofGetElapsedTimeMillis();
+            titlePanel.flip(0.0f);
+        }
+        if(titlePanel.needsUpdate()) {
+            titleIndex++;
+            titleIndex %= posts.size();
+            textPanel.flip(titlePanel.getLastSpeed());
+        }
+        if(textPanel.needsUpdate()) {
+            textIndex++;
+            textIndex %= posts.size();
+            portPanel.flip(textPanel.getLastSpeed());
+        }
+        if(portPanel.needsUpdate()) {
+            portIndex++;
+            portIndex %= posts.size();
+            clock.flip(ofColor(0, 0, 0), portPanel.getLastSpeed());
+        }
+        if(clock.needsUpdate()) {
+            typePanel.flip(clock.getLastSpeed());
+        }
+        if(typePanel.needsUpdate()) {
+            typeIndex++;
+            typeIndex %= posts.size();
+            datePanel.flip(typePanel.getLastSpeed());
+        }
+        if(datePanel.needsUpdate()) {
+            dateIndex++;
+            dateIndex %= posts.size();
+            nextPanelReady = false;
+            bNeedsFetch = true;
             
-            if(postsNeedUpdate) {
-                rawIterator++;
-                rawIterator%=rawPosts.size();
-                updatePosts(rawPosts[rawIterator]);
-                postsNeedUpdate = false;
-            }
+            if(rawPosts.size() > 0) postsNeedUpdate = true;
             
-            if(ofGetElapsedTimeMillis() - timer > minDuration*1000 && nextPanelReady && flipsCompleted) {
-                flipsCompleted = false;
-                timer = ofGetElapsedTimeMillis();
-                titlePanel.flip(0.0f);
-            }
-            if(titlePanel.needsUpdate()) {
-                titleIndex++;
-                titleIndex %= posts.size();
-                textPanel.flip(titlePanel.getLastSpeed());
-            }
-            if(textPanel.needsUpdate()) {
-                textIndex++;
-                textIndex %= posts.size();
-                portPanel.flip(textPanel.getLastSpeed());
-            }
-            if(portPanel.needsUpdate()) {
-                portIndex++;
-                portIndex %= posts.size();
-                clock.flip(ofColor(0, 0, 0), portPanel.getLastSpeed());
-            }
-            if(clock.needsUpdate()) {
-                typePanel.flip(clock.getLastSpeed());
-            }
-            if(typePanel.needsUpdate()) {
-                typeIndex++;
-                typeIndex %= posts.size();
-                datePanel.flip(typePanel.getLastSpeed());
-            }
-            if(datePanel.needsUpdate()) {
-                dateIndex++;
-                dateIndex %= posts.size();
-                nextPanelReady = false;
-                bNeedsFetch = true;
-                //                datePanel.setTexs(&dateTex, &dateTex);
-                //                datePanel.display();
-                postsNeedUpdate = true;
-                flipsCompleted = true;
-                //                if(rawPosts[rawIterator].type == "Housekeeping") {
-                //                    //housekeepingVid.play();
-                //                    //hVidIsPlaying = true;
-                //                    //updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(rawPosts[rawIterator].type == "Event"){
-                //                    //eventVid.play();
-                //                    //eVidIsPlaying = true;
-                //                    //updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(rawPosts[rawIterator].type == "Information") {
-                //                    //informationVid.play();
-                //                    //iVidIsPlaying = true;
-                //                    //updatePosts(rawPosts[rawIterator]);
-                //                }
-                //                if(!iVidIsPlaying && !eVidIsPlaying && !hVidIsPlaying) {
-                //                    //updatePosts(rawPosts[rawIterator]);
-                //                }
-            }
-            //            if(iVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating infoVid";
-            //                informationVid.update();
-            //                if(informationVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "infovid is done!";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting infovid to first frame";
-            //                    informationVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping infovid";
-            //                    informationVid.stop();
-            //                    iVidIsPlaying = false;
-            //
-            //                }
-            //            }
-            //            if(eVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating event vid";
-            //                eventVid.update();
-            //                if(eventVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "event vid is done!";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting event vid to first frame";
-            //                    eventVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping event vid";
-            //                    eventVid.stop();
-            //                    eVidIsPlaying = false;
-            //                }
-            //            }
-            //            if(hVidIsPlaying) {
-            //                ofLog() << "[" << ofGetTimestampString() << "]" << "updating housekeeping vid";
-            //                housekeepingVid.update();
-            //                if(housekeepingVid.getCurrentFrame() > 299) {
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "housekeeping vid is done";
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "updating posts";
-            //                    updatePosts(rawPosts[rawIterator]);
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "setting housekeeping vid to first frame";
-            //                    housekeepingVid.firstFrame();
-            //                    ofLog() << "[" << ofGetTimestampString() << "]" << "stopping housekeeping vid";
-            //                    housekeepingVid.stop();
-            //                    hVidIsPlaying = false;
-            //                }
-            //            }
-        } else {
+            flipsCompleted = true;
+        }
+        if(!(rawPosts.size() > 0)) {
             ofLog() << "[" << ofGetTimestampString() << "]" << "rawPosts.size() is < 0";
             ofLog() << "[" << ofGetTimestampString() << "]" << "trying to fetch raw posts";
             rawPosts = fetchRawPosts(url);
@@ -280,7 +214,7 @@ void ofApp::draw(){
 #ifdef __APPLE__
     ofScale(0.5, 0.5);
 #endif
-    if(rawPosts.size() > 0) {
+    if(posts.size() > 0) {
         ofBackground(0);
         
         ofPushStyle();
@@ -390,15 +324,10 @@ void ofApp::generatePostImages(ofApp::rawPost rawPost, map<string, ofFbo> panelB
     
     //<------------------------------LOAD IMAGES---------------------------->
     
-    bool loaded = false;
-    while(!loaded) loaded = image.loadImage(rawPost.imageLink);
-    loaded = false;
-    while(!loaded) loaded = portrait.loadImage(rawPost.portraitLink);
-    loaded = false;
-    while(!loaded) loaded = qrCode.loadImage(rawPost.qrLink);
-    loaded = false;
-    while(!loaded) loaded = logo.loadImage(rawPost.logoLink);
-    loaded = false;
+    image.loadImage(rawPost.imageLink);
+    portrait.loadImage(rawPost.portraitLink);
+    qrCode.loadImage(rawPost.qrLink);
+    logo.loadImage(rawPost.logoLink);
     
     //<------------------------------DRAW MAIN PANEL ---------------------------->
     ofLog() << "[" << ofGetTimestampString() << "]" << "Drawing Main Panel";
@@ -578,9 +507,9 @@ void ofApp::updatePosts(ofApp::rawPost newRawPost) {
     ofDisableDepthTest();
     
     if(posts.size()>1) posts.pop_front();
-    if(useBuffer1) generatePostImages(newRawPost, panelBuffers1);
-    else generatePostImages(newRawPost, panelBuffers2);
-    useBuffer1 = !useBuffer1;
+    generatePostImages(newRawPost, panelBuffers[panelBufferIterator]);
+    panelBufferIterator++;
+    panelBufferIterator%=numPanelBuffers;
     posts.push_back(returnMap);
     nextPanelReady = true;
     

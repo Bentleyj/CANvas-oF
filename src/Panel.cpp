@@ -100,7 +100,7 @@ void Panel::update() {
         rotSpeed += rotAcc;
         rotSpeed = min(rotSpeed, maxSpeed);
         rot-=rotSpeed;
-        if(rot < -175){
+        if(rot < -180){
             bFlipping = false;
             bNeedsUpdate = true;
             rot = 0;
@@ -110,10 +110,16 @@ void Panel::update() {
     }
 }
 
+void Panel::setFlipping(bool newFlipping) {
+    bFlipping = newFlipping;
+}
+
 void Panel::flip(float newSpeed) {
-    bFlipping = true;
-    rot = -1;
-    rotSpeed = newSpeed;
+    if(!bFlipping) {
+        bFlipping = true;
+        rot = -1;
+        rotSpeed = newSpeed;
+    }
 }
 
 float Panel::getRot() {
